@@ -45,7 +45,7 @@ void Camera::updateDirectionVector(glm::vec2 pCurrentMousePosition, bool pWindow
 
 void Camera::updatePositionVector(const std::unordered_set<unsigned char>& pKeys)
 {
-  static float speed = 0.003F;
+  static float speed = 0.004F;
   
   if(pKeys.find(SDLK_w) != pKeys.end())
   {
