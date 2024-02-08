@@ -9,10 +9,12 @@ struct Vertex
   Vertex(
     float pX, float pY, float pZ,
     float cR, float cG, float cB, float cA,
-    float tU, float tV) :
+    float tU, float tV,
+    float nI = 0, float nJ = 0, float nK = 0) :
     position{ pX, pY, pZ },
     color{ cR, cG, cB, cA },
-    texture{ tU, tV }
+    texture{ tU, tV },
+    normal{ nI, nJ, nK }
   {
   }
 
@@ -30,6 +32,11 @@ struct Vertex
   {
     float u, v;
   } texture;
+
+  struct
+  {
+    float i, j, k;
+  } normal;
 };
 
 

@@ -43,6 +43,7 @@ int main(int argc, char** argv)
   Camera vCamera({ 0.0F, 1.0F, 0.0F }, { 0.0F, 0.0F, -1.0F }, {0.0F, 0.0F, 2.0F});
   std::unordered_set<unsigned char> keys;
 
+  glm::vec3 vLightWorldPosition = {-2.0F, 2.0F, -3.0F};
 
   ShapeData vCube     = ShapeGenerator::makeCube();
 
@@ -67,28 +68,28 @@ int main(int argc, char** argv)
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, vCube.sizeIndices, vCube.indices, GL_STATIC_DRAW);
 
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 9, 0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 12, 0);
 
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 9, (void*)(sizeof(float) * 3));
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 12, (void*)(sizeof(float) * 3));
 
   glEnableVertexAttribArray(2);
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 9, (void*)(sizeof(float) * 7));
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 12, (void*)(sizeof(float) * 7));
+
+  glEnableVertexAttribArray(3);
+  glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 12, (void*)(sizeof(float) * 9));
 
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
   GLuint vShapeProgramId = attachAndLinkShaders(vWindow, "VertexShader.glsl", "FragmentShader.glsl");
+  GLuint vLightProgramId = attachAndLinkShaders(vWindow, "LightVertexShader.glsl", "LightFragmentshader.glsl");
 
   //load textures
-  GLuint vWallTextureId;
   GLuint vBoxTextureId;
-  GLuint vWaterTextureId;
 
-  glGenTextures(1, &vWallTextureId);
   glGenTextures(1, &vBoxTextureId);
-  glGenTextures(1, &vWaterTextureId);
 
   int vWallTextureHeight, vWallTextureWidth, vWallTextureChannels;
   unsigned char* vWallTextureData = stbi_load("Textures/wall2.png", &vWallTextureWidth, &vWallTextureHeight, &vWallTextureChannels, 0);
@@ -99,24 +100,11 @@ int main(int argc, char** argv)
   int vWaterTextureHeight, vWaterTextureWidth, vWaterTextureChannels;
   unsigned char* vWaterTextureData = stbi_load("Textures/water.png", &vWaterTextureWidth, &vWaterTextureHeight, &vWaterTextureChannels, 0);
 
-  //configure first texture
-  glBindTexture(GL_TEXTURE_2D, vWallTextureId);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vWallTextureWidth, vWallTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, vWallTextureData);
-  glGenerateMipmap(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
   //configure 2nd texture
   glBindTexture(GL_TEXTURE_2D, vBoxTextureId);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vBoxTextureWidth, vBoxTextureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, vBoxTextureData);
   glGenerateMipmap(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
-
-  //configure 3rd texture
-  glBindTexture(GL_TEXTURE_2D, vWaterTextureId);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vWaterTextureWidth, vWaterTextureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, vWaterTextureData);
-  glGenerateMipmap(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
 
   vRunning = true;
 
@@ -186,48 +174,25 @@ int main(int argc, char** argv)
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    static float vTileCubeRotationAngle = 0.01F;
-    vTileCubeRotationAngle += 0.01F;
-
-    static float vBoxCubeRotationAngle = 0.1F;
-    vBoxCubeRotationAngle += 0.05F;
-
-    static float vWaterCubeRotationAngle = 0.005F;
-    vWaterCubeRotationAngle += 0.03;
-
     //stay the same for each draw call
     glm::mat4 vPerspective = glm::perspective(glm::radians(60.0F), 800.0F / 600, 1.0F, 20.0F);
     glm::mat4 vLookAt      = vCamera.getLookAtMatrix();
 
-    GLint vModelUniformId = glGetUniformLocation(vShapeProgramId, "model");
-    GLint vViewUniformId  = glGetUniformLocation(vShapeProgramId, "view");
-    GLint vProjectionUniformId  = glGetUniformLocation(vShapeProgramId, "projection");
-
     //cube draw call
-    glm::mat4 vTranslation = 
-      glm::translate(glm::mat4(1), glm::vec3(0.0F, 0.0F, -7.0F)) * 
-      glm::rotate(glm::mat4(1), glm::radians(vTileCubeRotationAngle), glm::vec3(1.0F, 0.0F, 1.0F)) *
-      glm::scale(glm::mat4(1), glm::vec3(0.7F, 0.7F, 0.7F));
+    glUseProgram(vShapeProgramId);
+
+    GLint vModelUniformId = glGetUniformLocation(vShapeProgramId, "model");
+    GLint vViewUniformId = glGetUniformLocation(vShapeProgramId, "view");
+    GLint vProjectionUniformId = glGetUniformLocation(vShapeProgramId, "projection");
+    GLint vLightPositionUniformId = glGetUniformLocation(vShapeProgramId, "lightPosition");
+
+    glm::mat4 vTransform = glm::translate(glm::mat4(1), glm::vec3(2.0F, 0.0F, -5.0F));
 
     //set uniforms
-    glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTranslation));
+    glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTransform));
     glUniformMatrix4fv(vViewUniformId, 1, GL_FALSE, glm::value_ptr(vLookAt));
     glUniformMatrix4fv(vProjectionUniformId, 1, GL_FALSE, glm::value_ptr(vPerspective));
-
-    glBindVertexArray(vCubeVertexArrayId);
-    glBindTexture(GL_TEXTURE_2D, vWallTextureId);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-
-    //second cube draw call
-    vTranslation = glm::translate(glm::mat4(1), glm::vec3(3.0F, 0.0F, -4.0F)) * glm::rotate(glm::mat4(1), glm::radians(vBoxCubeRotationAngle), glm::vec3(0.0F, 1.0F, 0.0F));
-
-    //set uniforms
-    glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTranslation));
-    glUniformMatrix4fv(vViewUniformId, 1, GL_FALSE, glm::value_ptr(vLookAt));
-    glUniformMatrix4fv(vProjectionUniformId, 1, GL_FALSE, glm::value_ptr(vPerspective));
+    glUniform3fv(vLightPositionUniformId, 1, glm::value_ptr(vLightWorldPosition));
 
     glBindVertexArray(vCubeVertexArrayId);
     glBindTexture(GL_TEXTURE_2D, vBoxTextureId);
@@ -236,22 +201,25 @@ int main(int argc, char** argv)
     glBindTexture(GL_TEXTURE_2D, 0);
 
 
-    //Third cube draw call
-    vTranslation = 
-      glm::translate(glm::mat4(1), glm::vec3(-4.0F, 0.0F, -7.0F)) * 
-      glm::rotate(glm::mat4(1), glm::radians(vWaterCubeRotationAngle), glm::vec3(0.0F, -1.0F, -1.0F)) *
-      glm::scale(glm::mat4(1), glm::vec3(1.4F, 1.4F, 1.4F));
+
+    //light draw call
+    glUseProgram(vLightProgramId);
+
+    vModelUniformId = glGetUniformLocation(vLightProgramId, "model");
+    vViewUniformId = glGetUniformLocation(vLightProgramId, "view");
+    vProjectionUniformId = glGetUniformLocation(vLightProgramId, "projection");
+
+    vTransform = glm::translate(glm::mat4(1), vLightWorldPosition) * glm::scale(glm::mat4(1), glm::vec3(0.1F, 0.1F, 0.1F));
 
     //set uniforms
-    glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTranslation));
+    glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTransform));
     glUniformMatrix4fv(vViewUniformId, 1, GL_FALSE, glm::value_ptr(vLookAt));
     glUniformMatrix4fv(vProjectionUniformId, 1, GL_FALSE, glm::value_ptr(vPerspective));
 
     glBindVertexArray(vCubeVertexArrayId);
-    glBindTexture(GL_TEXTURE_2D, vWaterTextureId);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
+
 
     SDL_GL_SwapWindow(vWindow);
   }
@@ -290,7 +258,7 @@ GLuint attachAndLinkShaders(SDL_Window* pWindow, const char* pVertexShaderFile, 
   glLinkProgram(vProgramId);
   checkProgramError(vProgramId, pWindow);
 
-  glUseProgram(vProgramId);
+  //glUseProgram(vProgramId);
 
   glDeleteShader(vVertexShaderId);
   glDeleteShader(vFragmentShaderId);
