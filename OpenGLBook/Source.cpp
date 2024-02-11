@@ -181,15 +181,21 @@ int main(int argc, char** argv)
     //cube draw call
     glUseProgram(vShapeProgramId);
 
+    static float angle = 0.001F;
+    angle += 0.01F;
+
     GLint vModelUniformId = glGetUniformLocation(vShapeProgramId, "model");
+    GLint vRotationUniformId = glGetUniformLocation(vShapeProgramId, "rotation");
     GLint vViewUniformId = glGetUniformLocation(vShapeProgramId, "view");
     GLint vProjectionUniformId = glGetUniformLocation(vShapeProgramId, "projection");
     GLint vLightPositionUniformId = glGetUniformLocation(vShapeProgramId, "lightPosition");
 
+    glm::mat4 vRotation  = glm::rotate(glm::mat4(1), glm::radians(angle), glm::vec3(0.0F, 1.0F, 0.0F));
     glm::mat4 vTransform = glm::translate(glm::mat4(1), glm::vec3(2.0F, 0.0F, -5.0F));
 
     //set uniforms
     glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTransform));
+    glUniformMatrix4fv(vRotationUniformId, 1, GL_FALSE, glm::value_ptr(vRotation));
     glUniformMatrix4fv(vViewUniformId, 1, GL_FALSE, glm::value_ptr(vLookAt));
     glUniformMatrix4fv(vProjectionUniformId, 1, GL_FALSE, glm::value_ptr(vPerspective));
     glUniform3fv(vLightPositionUniformId, 1, glm::value_ptr(vLightWorldPosition));

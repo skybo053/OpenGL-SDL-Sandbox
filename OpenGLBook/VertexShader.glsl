@@ -10,6 +10,8 @@ out vec4 toFragShaderColor;
 out float toFragShaderDefuseValue;
 
 uniform mat4 model;
+uniform mat4 rotation;
+
 uniform mat4 view;
 uniform mat4 projection;
 
@@ -17,13 +19,16 @@ uniform vec3 lightPosition;
 
 void main()
 {
-  vec4 position              = model * vec4(pos, 1.0F);
+  vec4 position              = model * rotation * vec4(pos, 1.0F);
+  vec4 rotatedNormal         = rotation * vec4(normal, 1.0F);
   vec4 vectorToLightPosition = normalize(vec4(lightPosition, 1.0F) - position);
-  float diffuseValue         = max(dot(vectorToLightPosition, vec4(normal, 1.0F)), 0.0F);
+  
+  float diffuseValue         = max(dot(vectorToLightPosition, rotatedNormal), 0.0F);
+  float ambientValue         = 0.1F;
 
-  gl_Position = projection * view * model * vec4(pos, 1.0F);
+  gl_Position = projection * view * model * rotation * vec4(pos, 1.0F);
   
   toFragShaderColor    = color;
   toFragShaderTexCoord = texCoord;
-  toFragShaderDefuseValue = diffuseValue;
+  toFragShaderDefuseValue = diffuseValue + ambientValue;
 }
