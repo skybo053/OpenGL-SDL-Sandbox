@@ -51,6 +51,7 @@ int main(int argc, char** argv)
   GLuint vCubeIndexBufferId;
   GLuint vCubeVertexArrayId;
 
+
   //glFrontFace(GL_CW);
   glEnable(GL_DEPTH_TEST);
   //glEnable(GL_CULL_FACE);
@@ -185,7 +186,9 @@ int main(int argc, char** argv)
     angle += 0.01F;
 
     GLint vModelUniformId = glGetUniformLocation(vShapeProgramId, "model");
+    GLint vFragModelUniformId = glGetUniformLocation(vShapeProgramId, "fragModel");
     GLint vRotationUniformId = glGetUniformLocation(vShapeProgramId, "rotation");
+    GLint vFragRotationUniformId = glGetUniformLocation(vShapeProgramId, "fragRotation");
     GLint vViewUniformId = glGetUniformLocation(vShapeProgramId, "view");
     GLint vProjectionUniformId = glGetUniformLocation(vShapeProgramId, "projection");
     GLint vLightPositionUniformId = glGetUniformLocation(vShapeProgramId, "lightPosition");
@@ -195,7 +198,9 @@ int main(int argc, char** argv)
 
     //set uniforms
     glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTransform));
+    glUniformMatrix4fv(vFragModelUniformId, 1, GL_FALSE, glm::value_ptr(vTransform));
     glUniformMatrix4fv(vRotationUniformId, 1, GL_FALSE, glm::value_ptr(vRotation));
+    glUniformMatrix4fv(vFragRotationUniformId, 1, GL_FALSE, glm::value_ptr(vRotation));
     glUniformMatrix4fv(vViewUniformId, 1, GL_FALSE, glm::value_ptr(vLookAt));
     glUniformMatrix4fv(vProjectionUniformId, 1, GL_FALSE, glm::value_ptr(vPerspective));
     glUniform3fv(vLightPositionUniformId, 1, glm::value_ptr(vLightWorldPosition));
