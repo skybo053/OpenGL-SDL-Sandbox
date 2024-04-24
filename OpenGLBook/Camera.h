@@ -11,10 +11,12 @@ public:
 
   Camera(glm::vec3 pUpVector, glm::vec3 pDirectionVector, glm::vec3 pPositionVector);
 
-  void updateDirectionVector(glm::vec2 pCurrentMousePosition, bool pWindowEntered);
+  void updateDirectionVector(glm::vec2 pCurrentMousePosition, bool pWindowEntered, const std::unordered_set<unsigned char>& pKeys);
   void updatePositionVector(const std::unordered_set<unsigned char>& pKeys);
 
-  glm::mat4 getLookAtMatrix();
+  glm::vec3 getPositionVector() const;
+  glm::vec3 getDirectionVector() const;
+  glm::mat4 getLookAtMatrix() const;
 
 private:
 

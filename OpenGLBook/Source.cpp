@@ -1,13 +1,22 @@
 #include <iostream>
+
 #include <SDL/SDL.h>
+
 #include <glad/glad.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <ImGUI/imgui.h>
+#include <ImGUI/imgui_impl_sdl2.h>
+#include <ImGUI/imgui_impl_opengl3.h>
+
 #include <set>
 #include <thread>
 #include <deque>
 #include <sstream>
+
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -109,12 +118,27 @@ int main(int argc, char** argv)
 
   vRunning = true;
 
+
+  ImGui::CreateContext();
+
+  ImGuiIO& vImGuiIO = ImGui::GetIO(); 
+  vImGuiIO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+  vImGuiIO.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+  vImGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+  vImGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+  
+
+  ImGui_ImplSDL2_InitForOpenGL(vWindow, vContext);
+  ImGui_ImplOpenGL3_Init();
+
   while(vRunning)
   {
     SDL_Event vEvent;
 
     while(SDL_PollEvent(&vEvent))
     {
+      ImGui_ImplSDL2_ProcessEvent(&vEvent);
+
       switch(vEvent.type)
       {
         case SDL_QUIT:
@@ -144,32 +168,51 @@ int main(int argc, char** argv)
           break;
         }
         case SDL_MOUSEMOTION:
-        {
-          SDL_MouseMotionEvent vMouseMotionEvent  = vEvent.motion;
-          glm::vec2            vCurrMousePosition = glm::vec2(vMouseMotionEvent.x, vMouseMotionEvent.y);
+        { 
+          SDL_MouseMotionEvent vMouseMotionEvent = vEvent.motion;
 
-          vCamera.updateDirectionVector(vCurrMousePosition, vWindowEntered);
-
-          if(vWindowEntered)
+          if(vMouseMotionEvent.windowID == SDL_GetWindowID(vWindow))
           {
-            vWindowEntered = false;
-          }
+            glm::vec2 vCurrMousePosition = glm::vec2(vMouseMotionEvent.x, vMouseMotionEvent.y);
 
+            vCamera.updateDirectionVector(vCurrMousePosition, vWindowEntered, keys);
+
+            if(vWindowEntered)
+            {
+              vWindowEntered = false;
+            }
+          }
+          
           break;
         }
         case SDL_WINDOWEVENT:
         {
           SDL_WindowEvent vWindowEvent = vEvent.window;
 
-          if(vWindowEvent.event == SDL_WINDOWEVENT_ENTER)
+          if(vWindowEvent.event    == SDL_WINDOWEVENT_ENTER &&
+             vWindowEvent.windowID == SDL_GetWindowID(vWindow))
           {
             vWindowEntered = true;
           }
-
+          
           break;
         }
       }
     }
+
+    //Set up ImGUI frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    //ImGui::ShowDemoWindow();
+    ImGui::Begin("Move Light Source");
+
+    ImGui::SliderFloat("Light X position", &vLightWorldPosition.x, -15.0F, 15.0F);
+    ImGui::SliderFloat("Light Y position", &vLightWorldPosition.y, -15.0F, 15.0F);
+    ImGui::SliderFloat("Light Z position", &vLightWorldPosition.z, -15.0F, 15.0F);
+
+    ImGui::End();
 
     vCamera.updatePositionVector(keys);
 
@@ -185,25 +228,23 @@ int main(int argc, char** argv)
     static float angle = 0.001F;
     angle += 0.01F;
 
-    GLint vModelUniformId = glGetUniformLocation(vShapeProgramId, "model");
-    GLint vFragModelUniformId = glGetUniformLocation(vShapeProgramId, "fragModel");
-    GLint vRotationUniformId = glGetUniformLocation(vShapeProgramId, "rotation");
-    GLint vFragRotationUniformId = glGetUniformLocation(vShapeProgramId, "fragRotation");
-    GLint vViewUniformId = glGetUniformLocation(vShapeProgramId, "view");
-    GLint vProjectionUniformId = glGetUniformLocation(vShapeProgramId, "projection");
-    GLint vLightPositionUniformId = glGetUniformLocation(vShapeProgramId, "lightPosition");
+    GLint vModelUniformId          = glGetUniformLocation(vShapeProgramId, "model");
+    GLint vRotationUniformId       = glGetUniformLocation(vShapeProgramId, "rotation");
+    GLint vViewUniformId           = glGetUniformLocation(vShapeProgramId, "view");
+    GLint vProjectionUniformId     = glGetUniformLocation(vShapeProgramId, "projection");
+    GLint vLightPositionUniformId  = glGetUniformLocation(vShapeProgramId, "lightPosition");
+    GLint vCameraPositionUniformId = glGetUniformLocation(vShapeProgramId, "cameraPosition");
 
     glm::mat4 vRotation  = glm::rotate(glm::mat4(1), glm::radians(angle), glm::vec3(0.0F, 1.0F, 0.0F));
     glm::mat4 vTransform = glm::translate(glm::mat4(1), glm::vec3(2.0F, 0.0F, -5.0F));
 
     //set uniforms
     glUniformMatrix4fv(vModelUniformId, 1, GL_FALSE, glm::value_ptr(vTransform));
-    glUniformMatrix4fv(vFragModelUniformId, 1, GL_FALSE, glm::value_ptr(vTransform));
     glUniformMatrix4fv(vRotationUniformId, 1, GL_FALSE, glm::value_ptr(vRotation));
-    glUniformMatrix4fv(vFragRotationUniformId, 1, GL_FALSE, glm::value_ptr(vRotation));
     glUniformMatrix4fv(vViewUniformId, 1, GL_FALSE, glm::value_ptr(vLookAt));
     glUniformMatrix4fv(vProjectionUniformId, 1, GL_FALSE, glm::value_ptr(vPerspective));
     glUniform3fv(vLightPositionUniformId, 1, glm::value_ptr(vLightWorldPosition));
+    glUniform3fv(vCameraPositionUniformId, 1, glm::value_ptr(vCamera.getPositionVector()));
 
     glBindVertexArray(vCubeVertexArrayId);
     glBindTexture(GL_TEXTURE_2D, vBoxTextureId);
@@ -232,8 +273,24 @@ int main(int argc, char** argv)
     glBindVertexArray(0);
 
 
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    if(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+      SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+      SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+      ImGui::UpdatePlatformWindows();
+      ImGui::RenderPlatformWindowsDefault();
+      SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+    }
+
     SDL_GL_SwapWindow(vWindow);
   }
+
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplSDL2_Shutdown();
+  ImGui::DestroyContext();
 
   return 1;
 }

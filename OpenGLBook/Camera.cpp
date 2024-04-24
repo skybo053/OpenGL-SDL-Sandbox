@@ -13,14 +13,14 @@ Camera::Camera(glm::vec3 pUpVector, glm::vec3 pDirectionVector, glm::vec3 pPosit
 
 }
 
-void Camera::updateDirectionVector(glm::vec2 pCurrentMousePosition, bool pWindowEntered)
+void Camera::updateDirectionVector(glm::vec2 pCurrentMousePosition, bool pWindowEntered, const std::unordered_set<unsigned char>& pKeys)
 {
   glm::vec2 vMouseDelta = pCurrentMousePosition - lastMousePosition;
 
   lastMousePosition = pCurrentMousePosition;
-  
+
   //return if window was entered to avoid a jump because of large mouse delta for direction vector calculation
-  if(pWindowEntered) return;
+  if(pKeys.find(SDLK_SPACE) != pKeys.end() || pWindowEntered) return;
 
   float vAbs  = std::abs(directionVector.y);
   float vDiff = 1 - vAbs;
@@ -71,8 +71,18 @@ void Camera::updatePositionVector(const std::unordered_set<unsigned char>& pKeys
     positionVector -= strafeVector * speed;
   }
 }
-
-glm::mat4 Camera::getLookAtMatrix()
+ 
+glm::mat4 Camera::getLookAtMatrix() const
 {
   return glm::lookAt(positionVector, positionVector + directionVector, upVector);
+}
+
+glm::vec3 Camera::getPositionVector() const
+{
+  return positionVector;
+}
+
+glm::vec3 Camera::getDirectionVector() const
+{
+  return directionVector;
 }
