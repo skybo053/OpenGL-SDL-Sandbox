@@ -17,6 +17,7 @@ public:
   glm::vec3 getPositionVector() const;
   glm::vec3 getDirectionVector() const;
   glm::mat4 getLookAtMatrix() const;
+  glm::mat4 getReverseLookAtMatrix() const;
 
 private:
 
