@@ -83,42 +83,43 @@ int main(int argc, char** argv)
   DrawData* vSquareDrawData   = nullptr;
   DrawData* vCubeDrawData     = nullptr;
   DrawData* vFullScreenQuad   = nullptr;
-  
-  vTriangleDrawData = drawTriangle(vWindow, "VertexShader.glsl", "FragmentShader.glsl");
+  DrawData* vRedCubeDrawData  = nullptr;
+
+  //vTriangleDrawData = drawTriangle(vWindow, "VertexShader.glsl", "FragmentShader.glsl");
   // vBlockDrawData = drawBlockWithHole(vWindow, "VertexShader.glsl", "FragmentShader.glsl");
   // vSquareDrawData = drawSquare(vWindow, "VertexShader.glsl", "FragmentShader.glsl");
-  //vCubeDrawData   = drawCube(vWindow, "VertexShader.glsl", "FragmentShader.glsl");
-  vFullScreenQuad = drawFullScreenQuad(vWindow, "FrameBufferVertexShader.glsl", "FrameBufferFragmentShader.glsl");
+  vCubeDrawData    = drawCube(vWindow, "VertexShader.glsl", "FragmentShader.glsl");
+  vRedCubeDrawData = drawCube(vWindow, "RedCubeVertexShader.glsl", "RedCubeFragmentShader.glsl");
+  //vFullScreenQuad = drawFullScreenQuad(vWindow, "FrameBufferVertexShader.glsl", "FrameBufferFragmentShader.glsl");
 
-
-  //create framebuffer
-  GLuint vFrameBufferId;
-  GLuint vTextureId;
-  GLuint vRenderBufferId;
-
-  glGenTextures(1, &vTextureId);
-  glGenFramebuffers(1, &vFrameBufferId);
-  glGenRenderbuffers(1, &vRenderBufferId);
-
-  glBindFramebuffer(GL_FRAMEBUFFER, vFrameBufferId);
-  glBindRenderbuffer(GL_RENDERBUFFER, vRenderBufferId);
-  glBindTexture(GL_TEXTURE_2D, vTextureId);
-
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 150);
   
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, vTextureId, 0);
+  //set up cubemap textures
 
-  if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+
+  GLuint vSkyboxID;
+  glGenTextures(1, &vSkyboxID);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, vSkyboxID);
+  
+  std::vector<std::string> vCubeMapPaths = 
   {
-    std::cout << "Framebuffer is not complete yet you little bitch!\n";
+    "Textures/cubemap/lake/right.jpg",
+    "Textures/cubemap/lake/left.jpg",
+    "Textures/cubemap/lake/top.jpg",
+    "Textures/cubemap/lake/bottom.jpg",
+    "Textures/cubemap/lake/front.jpg",
+    "Textures/cubemap/lake/back.jpg",
+  };
+
+  int width, height, channels;
+  for(int vIndex = 0; vIndex < vCubeMapPaths.size(); ++vIndex)
+  {
+    unsigned char* vTextureData = stbi_load(vCubeMapPaths[vIndex].c_str(), &width, &height, &channels, 0);
+
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + vIndex, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, vTextureData);
   }
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glBindRenderbuffer(GL_RENDERBUFFER, 0);
+  glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
   vRunning = true;
   while(vRunning)
@@ -130,40 +131,45 @@ int main(int argc, char** argv)
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    //ImGui::Begin("Move Square");
+    //ImGui::Begin("Move Square"); 
     //ImGui::End();
 
     vCamera.updatePositionVector(keys);
 
-    //draw triangle to default frame buffer
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClearColor(0.0F, 0.0F, 0.0F, 0.0F);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    
-    glUseProgram(vTriangleDrawData->programID);
-    glBindVertexArray(vTriangleDrawData->vaoID);
-    GLint vMvpLocationId = glGetUniformLocation(vTriangleDrawData->programID, "mvp");
-    glUniformMatrix4fv(vMvpLocationId, 1, GL_FALSE, glm::value_ptr(glm::perspective(glm::radians(50.0F), 1.0F, 0.1F, 20.0F) * vCamera.getLookAtMatrix()));
-    glDrawElements(GL_TRIANGLES, vTriangleDrawData->numIndices, GL_UNSIGNED_INT, 0);
 
-    //draw triangle to new framebuffer
-    glBindFramebuffer(GL_FRAMEBUFFER, vFrameBufferId);
-    glClearColor(0.0F, 1.0F, 0.0F, 1.0F);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    glUniformMatrix4fv(vMvpLocationId, 1, GL_FALSE, glm::value_ptr(glm::perspective(glm::radians(50.0F), 1.0F, 0.1F, 20.0F) * vCamera.getReverseLookAtMatrix()));
-    glDrawElements(GL_TRIANGLES, vTriangleDrawData->numIndices, GL_UNSIGNED_INT, 0);
+    //draw red cube
+
+    glUseProgram(vRedCubeDrawData->programID);
+    glBindVertexArray(vRedCubeDrawData->vaoID);
+
+    GLint vMvpLocationId = glGetUniformLocation(vRedCubeDrawData->programID, "mvp");
+    glUniformMatrix4fv(vMvpLocationId, 1, GL_FALSE, glm::value_ptr(
+      glm::perspective(glm::radians(50.0F), 1.0F, 0.1F, 25.0F) * vCamera.getLookAtMatrix() * glm::translate(glm::mat4(1), glm::vec3(0.0F, 0.0F, -4.0F))
+    ));
+
+    glDrawElements(GL_TRIANGLES, vRedCubeDrawData->numIndices, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    //draw rear view mirror quad to render new framebuffer on
+    //draw cubemap
+    glUseProgram(vCubeDrawData->programID);
+    glBindVertexArray(vCubeDrawData->vaoID);
 
-    glUseProgram(vFullScreenQuad->programID);
-    glBindVertexArray(vFullScreenQuad->vaoID);
-    glBindTexture(GL_TEXTURE_2D, vTextureId);
+    GLint vProjectionLocation = glGetUniformLocation(vCubeDrawData->programID, "projection");
+    GLint vViewLocation       = glGetUniformLocation(vCubeDrawData->programID, "view");
+    GLint vTransformLocation  = glGetUniformLocation(vCubeDrawData->programID, "transform");
 
-    glDrawElements(GL_TRIANGLES, vFullScreenQuad->numIndices, GL_UNSIGNED_INT, 0);
+    glUniformMatrix4fv(vProjectionLocation, 1, GL_FALSE, glm::value_ptr(glm::perspective(glm::radians(50.0F), 1.0F, 0.1F, 25.0F)));
+    glUniformMatrix4fv(vViewLocation, 1, GL_FALSE, glm::value_ptr(vCamera.getLookAtMatrix()));
+    glUniformMatrix4fv(vTransformLocation, 1, GL_FALSE, glm::value_ptr(glm::scale(glm::mat4(1), glm::vec3(3.0F, 3.0F, 3.0F))));
+
+    glDepthFunc(GL_LEQUAL);
+    glDrawElements(GL_TRIANGLES, vCubeDrawData->numIndices, GL_UNSIGNED_INT, 0);
+    glDepthFunc(GL_LESS);
+
     glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
+
+  
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -574,8 +580,8 @@ DrawData* drawFullScreenQuad(SDL_Window* pWindow, const char* pVertexShader, con
   float vFullScreenQuad[] =
   {
       1.0F, 1.0F, 0.9F,   1.0F, 0.0F, 0.0F, 1.0F,    1.0F, 1.0F,   // 0  top right
-      1.0F,  0.5F, 0.9F,   1.0F, 0.0F, 0.0F, 1.0F,    1.0F, 0.0F,  // 1  bottom right
-     -1.0F, 0.5F, 0.9F,   1.0F, 0.0F, 0.0F, 1.0F,    0.0F, 0.0F,   // 2  bottom left
+      1.0F,  -1.0F, 0.9F,   1.0F, 0.0F, 0.0F, 1.0F,    1.0F, 0.0F,  // 1  bottom right
+     -1.0F, -1.0F, 0.9F,   1.0F, 0.0F, 0.0F, 1.0F,    0.0F, 0.0F,   // 2  bottom left
       -1.0F,  1.0f, 0.9F,   1.0F, 0.0F, 0.0F, 1.0F,    0.0F, 1.0F, // 3  top left
   };
 
